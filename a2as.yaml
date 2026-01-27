@@ -1,0 +1,94 @@
+manifest:
+  version: "0.1.2"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: gianloko/sf-mcp-server
+    source: https://github.com/gianloko/sf-mcp-server
+    branch: main
+    commit: "9f1a15f5"
+    scope: [mcp-agent.py]
+  issued:
+    by: A2AS.org
+    at: '2026-01-26T16:11:26Z'
+  signatures:
+    digest: sha256:oRNHjR1nv0HnrtNFHfa7_tlAFRlbmxYwiIrBCO3t_vY
+    key: ed25519:KbACs3M3h2KX4OJPvBn8qInxIcVttYtWvP8CAPMAPGA
+    sig: ed25519:SQnHWfyHxPcSwaNeYwhCW8AptaXjOLLJGxs5b-UG6rx85cRWJ8irN5DBMV5IoLAHWmFf-wVWuieh3NcqSKZoDg
+
+agents:
+  agent:
+    type: instance
+    models: [gpt-4.1]
+    mcp: [server]
+    params:
+      function: run
+      name: Assistant
+      model_settings: ModelSettings(tool_choice=required)
+      instructions: [Use the tools to answer the questions.]
+
+models:
+  gpt-4.1:
+    type: default
+    agents: [agent]
+
+mcp:
+  server:
+    type: network
+    url: http://127.0.0.1:8001/sse
+    agents: [agent]
+    params:
+      class: MCPServerSse
+      name: Salesforce MCP Server
+      alias: [mcp_server]
+
+imports:
+  Agent: agents.Agent
+  Any: typing.Any
+  asyncio: asyncio
+  gen_trace_id: agents.gen_trace_id
+  MCPServer: agents.mcp.MCPServer
+  MCPServerSse: agents.mcp.MCPServerSse
+  ModelSettings: agents.model_settings.ModelSettings
+  os: os
+  Runner: agents.Runner
+  shutil: shutil
+  subprocess: subprocess
+  time: time
+  trace: agents.trace
+
+functions:
+  main:
+    type: async
+    module: mcp-agent
+  run:
+    type: async
+    module: mcp-agent
+    args: [mcp_server]
+
+files:
+  mcp-server.py:
+    type: literal
+    actions: [read]
+    params:
+      caller: [os.path.join]
+      path: [this_dir]
+
+processes:
+  uv:
+    type: shell
+    actions: [exec]
+    args: [[run, server_file]]
+    params:
+      caller: [subprocess.Popen]
+      shell: ["False"]
+
+networks:
+  "127.0.0.1":
+    type: api
+    actions: [connect]
+    urls: [/sse]
+    protocols: [http]
+    ports: ["8001"]
+    params:
+      caller: [MCPServerSse]
+      links: [server]
